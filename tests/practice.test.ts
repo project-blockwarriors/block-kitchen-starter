@@ -13,6 +13,117 @@ for await (const line of createInterface({input:process.stdin})) {
  if(m.type==='observation') setTimeout(()=>console.log(JSON.stringify({type:'action',action:{seq:m.observation.tick+1,observedTick:m.observation.tick,task:'tomato',target:'tomato'}})),${delay});
 }`;
 
+test('a response for a future observation cannot start the local clock', { timeout: 15000 }, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'kitchen-response-'));
+  try {
+    const bot = join(dir, 'future.mjs');
+    await writeFile(
+      bot,
+      fixture(0).replace('observedTick:m.observation.tick', 'observedTick:m.observation.tick+1'),
+    );
+    const result = await runPractice({ out: join(dir, 'run'), bots: [bot, bot], seconds: 10 });
+    assert.equal(result.status, 'failed');
+    assert.equal(result.ticks, 0);
+    assert.match(result.error!, /matching action response.*3 seconds/);
+    assert.equal(result.chefs[0].calls, 1);
+    assert.equal(result.chefs[0].ignoredActions, 1);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test(
+  'reused action sequences do not release the lane while its partner keeps playing',
+  { timeout: 15000 },
+  async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'kitchen-response-'));
+    try {
+      const bot = join(dir, 'duplicate.mjs'),
+        fast = join(dir, 'fast.mjs');
+      await writeFile(bot, fixture(0).replace('seq:m.observation.tick+1', 'seq:1'));
+      await writeFile(fast, fixture(0));
+      const result = await runPractice({ out: join(dir, 'run'), bots: [bot, fast], seconds: 10 });
+      assert.equal(result.status, 'failed');
+      assert.equal(result.ticks, 100);
+      assert.equal(result.chefs[0].calls, 2);
+      assert.equal(result.chefs[0].ignoredActions, 1);
+      assert.match(result.chefs[0].error!, /matching action response.*3 seconds/);
+      assert.ok(result.chefs[1].calls > 85);
+      assert.equal(result.rejectedActions, 0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'unmatched replies are ignored until a matching reply arrives, without consuming its sequence',
+  { timeout: 15000 },
+  async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'kitchen-response-'));
+    try {
+      const bot = join(dir, 'recover.mjs');
+      await writeFile(
+        bot,
+        `
+import { createInterface } from 'node:readline';
+const send=(action)=>console.log(JSON.stringify({type:'action',action}));
+for await (const line of createInterface({input:process.stdin})) {
+ const m=JSON.parse(line);
+ if(m.type==='prepare') console.log(JSON.stringify({type:'ready',version:1,nonce:m.nonce}));
+ if(m.type==='observation') {
+  const tick=m.observation.tick, action={seq:tick+1,observedTick:tick,task:'wait',target:''};
+  send({...action,observedTick:tick+1,seq:999999});
+  if(tick>0) {
+   send({...action,observedTick:tick-1});
+   send({...action,seq:0});
+  }
+  send(action);
+  send(action);
+ }
+}`,
+      );
+      const result = await runPractice({ out: join(dir, 'run'), bots: [bot, bot], seconds: 10 });
+      assert.equal(result.status, 'completed');
+      assert.equal(result.ticks, 100);
+      assert.equal(result.rejectedActions, 0);
+      for (const chef of result.chefs) {
+        assert.ok(chef.calls > 85);
+        assert.equal(chef.ignoredActions, chef.calls * 4 - 2);
+      }
+      const rows = (await readFile(join(dir, 'run/replay.ndjson'), 'utf8'))
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+      assert.ok(
+        rows.some((r) => r.type === 'decision' && r.kind === 'log' && /Ignored action/.test(r.payload.text)),
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+);
+
+test('actions sent before the first observation still fail preparation', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'kitchen-response-'));
+  try {
+    const bot = join(dir, 'early.mjs');
+    await writeFile(
+      bot,
+      fixture(0).replace(
+        "if(m.type==='prepare') console.log(JSON.stringify({type:'ready',version:1,nonce:m.nonce}));",
+        "if(m.type==='prepare') process.stdout.write(JSON.stringify({type:'ready',version:1,nonce:m.nonce})+'\\n'+JSON.stringify({type:'action',action:{seq:1,observedTick:0,task:'wait',target:''}})+'\\n');",
+      ),
+    );
+    const result = await runPractice({ out: join(dir, 'run'), bots: [bot, bot], seconds: 10 });
+    assert.equal(result.status, 'failed');
+    assert.equal(result.ticks, 0);
+    assert.match(result.error!, /first observation/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test(
   'slow chef does not delay the clock or its partner; custom bot files are executed',
   { timeout: 16000 },
