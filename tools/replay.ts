@@ -1,34 +1,33 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { readReplay, runResult, replayData } from './run-result.ts';
 import { stations, recipes } from '../game.ts';
-const [directory, output] = process.argv.slice(2);
-if (!directory || !output) throw Error('Usage: kitchen-replay.ts RUN_DIRECTORY OUTPUT.html');
-const receipt = JSON.parse(await readFile(directory + '/summary.json', 'utf8'));
-const { rows, issue } = await readReplay(directory);
-const meta = {
-  id: receipt.id,
-  sources: receipt.sources,
-  mode: receipt.mode,
-  dispatch: receipt.dispatch,
-  style: receipt.style,
-  execution: receipt.execution,
-  status: receipt.status,
-  duration: receipt.duration,
-  error: receipt.error,
-  modelMode: receipt.modelMode,
-  tickLateP95Ms: receipt.tickLateP95Ms,
-};
-const data = JSON.stringify({
-  rows: rows.filter((r) => r.type === 'decision'),
-  meta,
-  result: runResult(receipt, rows, issue),
-  ...replayData(rows),
-  stations,
-  recipes,
-}).replace(/</g, '\\u003c');
-await writeFile(
-  output,
-  `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Block Kitchen · Practice replay</title>
+export function renderKitchenReplay(receipt: any, rows: any[], issue?: string) {
+  const meta = {
+    id: receipt.id,
+    sources: receipt.sources,
+    mode: receipt.mode,
+    dispatch: receipt.dispatch,
+    style: receipt.style,
+    execution: receipt.execution,
+    status: receipt.status,
+    duration: receipt.duration,
+    error: receipt.error,
+    cleanupConfirmed: receipt.cleanupConfirmed,
+    validForComparison: receipt.validForComparison,
+    modelMode: receipt.modelMode,
+    tickLateP95Ms: receipt.tickLateP95Ms,
+  };
+  const data = JSON.stringify({
+    rows: rows.filter((r) => r.type === 'decision'),
+    meta,
+    result: runResult(receipt, rows, issue),
+    ...replayData(rows),
+    stations,
+    recipes,
+  }).replace(/</g, '\\u003c');
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Block Kitchen · Practice replay</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#080808;color:#f5f5f5;font:15px/1.5 Arial,sans-serif;font-variant-numeric:tabular-nums}main{max-width:1080px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center;gap:16px}h1{font-size:24px;margin:0}h2{font-size:16px;margin:0 0 8px}p{margin:6px 0;color:#b4b4b4}.brand{font-size:13px;color:#b4b4b4}a{color:inherit}.score{font-size:30px;white-space:nowrap}.score small{font-size:12px;color:#b4b4b4;display:block}.score{text-align:right}.result{background:#191919;margin:16px 0;padding:12px 16px}.result h2{margin:0}.result p{margin:4px 0}.result a{font-size:14px}.result[data-warning="true"] h2{color:#e7b85f}.diagnostic{padding:12px 0;border-bottom:1px solid #333}.diagnostic p{overflow-wrap:anywhere}.empty{padding:24px 0}.empty h2{margin:0}[hidden]{display:none!important}#scope,#tested-code{font-size:13px}#tested-code{overflow-wrap:anywhere}.source-detail{overflow-wrap:anywhere;font-size:13px}.source-detail code{display:block;margin:4px 0}button:disabled{color:#b4b4b4;cursor:default}.orders{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0 12px}.ticket{background:#191919;padding:12px}.ticket b{font-size:16px}.ticket span{display:block;color:#b4b4b4}.ticket progress{width:100%;height:4px;accent-color:#e7b85f;display:block;margin-top:8px}canvas{display:block;width:100%;background:#111;height:min(38vh,360px)}.transport{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 0}button,select{font:inherit;min-height:44px;border:1px solid #4a4a4a;border-radius:6px;background:#191919;color:white;padding:8px 14px;cursor:pointer}button.primary{background:#fff;color:#111;border-color:#fff}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #e7b85f;outline-offset:3px}#seek{width:100%;accent-color:white;min-height:28px}time{margin-left:auto}.chefs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.chef{background:#191919;padding:12px;min-width:0}.chef b{display:block}.chef:first-child b{color:#f0bb79}.chef:nth-child(2) b{color:#7dd3c0}.chef p{overflow-wrap:anywhere}.event{min-height:48px;background:#222;padding:12px;margin-bottom:12px}details{margin-top:20px;border-top:1px solid #333;padding-top:16px}summary{cursor:pointer}code{font-size:13px}#run{font-size:12px;overflow-wrap:anywhere}@media(max-width:600px){main{padding:16px}h1{font-size:21px}.orders{gap:6px;margin-top:12px}.ticket{padding:8px}.ticket b{font-size:13px}.ticket span{font-size:12px}canvas{height:220px}.result{padding:12px}.result p{font-size:14px}.orders{align-items:stretch}.ticket{height:100%}.score small{max-width:100px;white-space:normal}.chefs{gap:8px}.chef{padding:8px;font-size:13px}.transport{gap:6px}button,select{padding:6px 10px}.score{font-size:26px}.brand{font-size:12px}}
 </style><main><header><div><a class="brand" href="https://mcpanel.blockwarriors.ai/dreamweaver/#Kitchen">BlockWarriors / Block Kitchen</a><h1>Practice replay</h1></div><div class="score"><span id="score">0</span> <small id="score-label">Replay points</small></div></header>
 <section class="result" id="result" aria-labelledby="result-heading"><h2 id="result-heading"></h2><p id="run-status"></p><p id="next-step"></p><p id="tested-code"></p><a id="details-link" href="#diagnostics">Run details</a></section><section id="no-recording" class="empty" hidden><h2>No replay available</h2><p>No game states were saved. Run details are retained below.</p></section><section id="playback"><div id="orders" class="orders" aria-label="Current orders"></div><canvas id="arena" aria-label="Kitchen map showing two chefs, ingredients, handoff counters and stoves"></canvas>
@@ -54,10 +53,11 @@ const task=c=>c.busyUntil?'Chopping':({tomato:'Fetching a tomato',mushroom:'Fetc
 const item=i=>!i?'Empty hands':i.kind==='soup'?i.recipe+' soup':i.kind+' '+i.ingredient;
 const text=(tag,value)=>{const e=document.createElement(tag);e.textContent=value;return e;};
 const sources=Array.isArray(DATA.meta.sources)?DATA.meta.sources.slice(0,2).map(s=>s&&typeof s==='object'?s:{}):[];
-const sourceLabel=s=>s?.kind==='git-archive'&&typeof s.sha==='string'?'Commit '+s.sha.slice(0,8):s?.kind==='working-tree'?'Working files':s?.kind==='loose-file'?'Loose file':'Revision not recorded';
-const sameCommit=sources.length===2&&sources.every(s=>s.kind==='git-archive')&&typeof sources[0].sha==='string'&&sources[0].sha===sources[1].sha&&sources[0].archiveSha256===sources[1].archiveSha256;
-$('tested-code').textContent=sameCommit?'Tested code · Both chefs: '+sourceLabel(sources[0]):sources.length===2?'Tested code · '+sources.map((s,i)=>'Chef '+(i+1)+': '+sourceLabel(s)).join(' · '):'Tested code · revision not recorded';
-for(const [i,s] of sources.entries()){const e=document.createElement('div');e.className='source-detail';e.append(text('b','Chef '+(i+1)+' · '+sourceLabel(s)),text('p',(s.name||'Unnamed agent')+' · '+(s.runtime||'runtime not recorded')+' · '+(s.entrypoint||'entrypoint not recorded')));if(s.sha)e.append(text('code','Commit: '+s.sha));if(s.archiveSha256)e.append(text('code','Local Git archive SHA-256: '+s.archiveSha256));e.append(text('p',s.kind==='git-archive'?'Ran an exported commit. Uncommitted edits were excluded.':s.kind==='working-tree'?'Ran current files, including uncommitted edits.':s.kind==='loose-file'?'Ran one Node entrypoint with its folder as the working directory.':'Source details unavailable.'));$('sources').append(e);}
+const sourceLabel=s=>['git-archive','imported-archive'].includes(s?.kind)&&typeof s.sha==='string'?'Commit '+s.sha.slice(0,8):s?.kind==='working-tree'?'Working files':s?.kind==='loose-file'?'Loose file':'Revision not recorded';
+const sameCommit=sources.length===2&&sources.every(s=>['git-archive','imported-archive'].includes(s.kind))&&typeof sources[0].sha==='string'&&sources[0].sha===sources[1].sha&&sources[0].archiveSha256===sources[1].archiveSha256&&sources[0].digest===sources[1].digest;
+const codeLabel=sources.some(s=>s.kind==='imported-archive')?'Submitted code':'Tested code';
+$('tested-code').textContent=codeLabel+' · '+(sameCommit?'Both chefs: '+sourceLabel(sources[0]):sources.length===2?sources.map((s,i)=>'Chef '+(i+1)+': '+sourceLabel(s)).join(' · '):'revision not recorded');
+for(const [i,s] of sources.entries()){const e=document.createElement('div');e.className='source-detail';e.append(text('b','Chef '+(i+1)+' · '+sourceLabel(s)),text('p',(s.name||'Unnamed agent')+' · '+(s.runtime||'runtime not recorded')+' · '+(s.entrypoint||'entrypoint not recorded')));if(s.sha)e.append(text('code','Commit: '+s.sha));if(s.digest)e.append(text('code','Imported archive SHA-256: '+s.digest));if(s.archiveSha256)e.append(text('code','Local Git archive SHA-256: '+s.archiveSha256));e.append(text('p',s.kind==='imported-archive'?'Frozen GitHub archive assigned to this attempt.':s.kind==='git-archive'?'Ran an exported commit. Uncommitted edits were excluded.':s.kind==='working-tree'?'Ran current files, including uncommitted edits.':s.kind==='loose-file'?'Ran one Node entrypoint with its folder as the working directory.':'Source details unavailable.'));$('sources').append(e);}
 for(const issue of result.issues){const e=document.createElement('div');e.className='diagnostic';e.append(text('b',issue.label),text('p',issue.detail));$('issues').append(e);}
 function draw(){if(!last)return;const s=states.findLast(s=>s.tick<=tick)||states[0];$('score').textContent=s.score.toLocaleString();$('time').textContent=fmt(s.tick)+' / '+fmt(last.tick);$('seek').value=s.tick;$('seek').setAttribute('aria-valuetext',fmt(s.tick));
 $('orders').replaceChildren(...s.orders.map(o=>{const e=document.createElement('div');e.className='ticket';e.append(text('b',o.recipe[0].toUpperCase()+o.recipe.slice(1)+' soup'),text('span',DATA.recipes[o.recipe].join(' + ')),text('span',Math.max(0,Math.ceil((o.expiresAt-s.tick)/10))+'s left'));const p=document.createElement('progress');p.max=650;p.value=o.expiresAt-s.tick;p.setAttribute('aria-label','Order time remaining');e.append(p);return e;}));
@@ -73,7 +73,13 @@ for(const c of s.chefs){let x=px(c.x),y=pz(c.z);if(s.chefs[1-c.seat].x===c.x&&s.
 }
 $('play').onclick=()=>{if(!last)return;if(tick>=last.tick)tick=states[0].tick;playing=!playing;$('play').textContent=playing?'Pause':'Play replay';};$('seek').oninput=()=>{tick=Number($('seek').value);draw();};$('back').onclick=()=>{tick=Math.max(states[0]?.tick??0,tick-50);draw();};$('next').onclick=()=>{if(!last)return;const e=events.find(e=>e.kind==='delivered'&&e.tick>tick);tick=e?e.tick:last.tick;draw();};$('run').textContent='Run '+(DATA.meta.id||'unknown')+' · '+(DATA.meta.execution||'execution not recorded')+' · '+(DATA.meta.style||'style not recorded')+' · '+(DATA.meta.status||'status not recorded')+' · '+(DATA.meta.dispatch||'dispatch not recorded')+' · '+(DATA.meta.modelMode==='disabled'?'models disabled':result.modelsRecorded?result.modelCalls+' model calls, '+result.modelErrors+' errors':'model calls not recorded')+' · p95 tick lateness '+(Number.isFinite(DATA.meta.tickLateP95Ms)?Math.round(DATA.meta.tickLateP95Ms)+' ms':'not recorded');
 function frame(now){if(playing&&last){tick=Math.min(last.tick,tick+(now-previous)/100*Number($('speed').value));if(tick>=last.tick){playing=false;$('play').textContent='Play replay';}draw();}previous=now;requestAnimationFrame(frame);}window.addEventListener('resize',draw);draw();if(last)requestAnimationFrame(frame);
-</script></html>`,
-  { flag: 'wx', mode: 0o600 },
-);
-console.log(output);
+</script></html>`;
+}
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const [directory, output] = process.argv.slice(2);
+  if (!directory || !output) throw Error('Usage: kitchen-replay.ts RUN_DIRECTORY OUTPUT.html');
+  const receipt = JSON.parse(await readFile(directory + '/summary.json', 'utf8'));
+  const { rows, issue } = await readReplay(directory);
+  await writeFile(output, renderKitchenReplay(receipt, rows, issue), { flag: 'wx', mode: 0o600 });
+  console.log(output);
+}
