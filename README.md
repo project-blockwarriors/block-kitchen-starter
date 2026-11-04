@@ -32,6 +32,16 @@ The replay starts with the run outcome and a next step. Chef errors, failed mode
 
 `practice-runs/` is ignored by Git and excluded from the downloadable starter. Compare score **and** missed orders, burns and errors. Local timings do not establish hosted worker capacity, and this no-model run does not measure Jev quality. The replay identifies the tested code for each chef. Run details include full commit and local archive hashes when available. Working files and loose entrypoints are labeled separately.
 
+## Compare two versions
+
+```sh
+npm run compare -- practice-runs/first practice-runs/revised
+```
+
+Read the change in points alongside orders served, missed orders, burns and rejected actions. The command checks that both runs finished with the same seed, shift length, rules, practice tool and runtime. It prints the tested revision for each chef. A failed run keeps its score for diagnosis but cannot pass the comparison checks. Exit status 1 means the inputs need attention; it does not mean the revised bot scored less.
+
+Use fresh runs from this starter version: older summaries lack the rules/tool hashes. Working-file runs are allowed and labeled; use committed `--ref` runs before submitting. `--json` prints the same report as JSON for your own evaluation scripts. This reads the summaries, without independently verifying the recordings or machine load. A single pair is a debugging aid. Repeat both versions on several seeds before choosing one; local fallback results do not measure Jev quality.
+
 ## What you submit
 
 Submit a GitHub repository at a specific commit or tag. The server runs two isolated copies of that version, one per chef. Each copy has its own memory and model requests. Use `observation.self.seat` to assign different roles, or let each chef choose from the shared kitchen state.

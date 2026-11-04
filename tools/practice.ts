@@ -185,6 +185,14 @@ export async function runPractice(input: {
     seconds = input.seconds ?? 60;
   if (!Number.isInteger(seconds) || seconds < 10 || seconds > 180)
     throw Error('Practice duration must be an integer from 10 to 180 seconds');
+  if (!Number.isSafeInteger(seed)) throw Error('Practice seed must be a safe integer');
+  const hashes = await Promise.all(
+    ['../game.ts', './practice.ts'].map(async (file) =>
+      createHash('sha256')
+        .update(await readFile(new URL(file, import.meta.url)))
+        .digest('hex'),
+    ),
+  );
   const game = new Kitchen(seed, seconds * 10, randomUUID());
   const out = resolve(input.out);
   // Reserve a new result directory. Never overwrite earlier experiments.
@@ -288,6 +296,9 @@ export async function runPractice(input: {
     mode: 'submission-config',
     style: 'custom',
     execution: 'local-process',
+    practiceEngineSha256: hashes[0],
+    practiceRunnerSha256: hashes[1],
+    practiceRuntime: { node: process.version, platform: process.platform, arch: process.arch },
     dispatch: 'independent-local-practice',
     modelMode: 'disabled',
     status:

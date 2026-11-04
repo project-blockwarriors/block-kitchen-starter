@@ -12,6 +12,7 @@
     "check": "npm test",
     "submission": "node tools/submission.mjs",
     "practice": "node tools/practice.ts",
-    "replay": "node tools/replay.ts"
+    "replay": "node tools/replay.ts",
+    "compare": "node tools/compare.ts"
   }
 }
