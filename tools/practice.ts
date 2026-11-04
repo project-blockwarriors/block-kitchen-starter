@@ -8,7 +8,13 @@ import { prepareSource } from './practice-source.ts';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Kitchen, validAction, type KitchenAction, type KitchenObservation } from '../game.ts';
 
-type Pending = { resolve: (a: KitchenAction) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
+type Pending = {
+  resolve: (a: KitchenAction) => void;
+  reject: (e: Error) => void;
+  timer: NodeJS.Timeout;
+  observedTick: number;
+  deadline: number;
+};
 type BotSource = {
   entry: string;
   root: string;
@@ -30,6 +36,8 @@ class ChefProcess {
   prepared = false;
   calls = 0;
   modelRequests = 0;
+  ignoredActions = 0;
+  lastSequence = -1;
   responseMs: number[] = [];
   exit: Promise<void>;
   readonly seat: number;
@@ -82,8 +90,32 @@ class ChefProcess {
                 this.prepared = true;
                 this.readyOK();
               } else if (m.type === 'action') {
-                if (!this.pending || !validAction(m.action)) throw Error('Invalid or unsolicited action');
+                if (!this.prepared || this.calls === 0)
+                  throw Error('Wait for the first observation before sending actions');
+                if (!validAction(m.action)) throw Error('Invalid action');
                 const pending = this.pending;
+                // Match hosted observation flow v1: only a new sequence answering the
+                // outstanding observation releases this lane. Old/future replies do
+                // not consume sequence numbers or extend the original deadline.
+                if (pending && performance.now() >= pending.deadline)
+                  throw Error('No matching action response within 3 seconds');
+                if (
+                  !pending ||
+                  m.action.observedTick !== pending.observedTick ||
+                  m.action.seq <= this.lastSequence
+                ) {
+                  this.ignoredActions++;
+                  this.record({
+                    type: 'decision',
+                    seat,
+                    kind: 'log',
+                    payload: {
+                      text: 'Ignored action: reply once to the outstanding observation with its observedTick and an increasing seq.',
+                    },
+                  });
+                  continue;
+                }
+                this.lastSequence = m.action.seq;
                 this.pending = undefined;
                 clearTimeout(pending.timer);
                 pending.resolve(m.action);
@@ -135,7 +167,9 @@ class ChefProcess {
       this.pending = {
         resolve: yes,
         reject: no,
-        timer: setTimeout(() => this.fail('Action response exceeded 3 seconds'), 3000),
+        observedTick: observation.tick,
+        deadline: began + 3000,
+        timer: setTimeout(() => this.fail('No matching action response within 3 seconds'), 3000),
       };
     });
     this.send({ type: 'observation', observation });
@@ -330,6 +364,7 @@ export async function runPractice(input: {
       responseP95Ms: p95(c.responseMs),
       error: c.error,
       disabledModelRequests: c.modelRequests,
+      ignoredActions: c.ignoredActions,
     })),
     limitations:
       'Local code runs with your permissions. Models disabled. Entrypoint hashes omit dependencies. Not a hosted result, sandbox test or capacity measurement.',
