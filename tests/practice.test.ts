@@ -37,6 +37,9 @@ test(
       assert.equal(states.length, 101);
       assert.equal(states[100].chefs[1].item.ingredient, 'tomato');
       assert.equal(result.modelMode, 'disabled');
+      assert.match(result.practiceEngineSha256!, /^[a-f0-9]{64}$/);
+      assert.match(result.practiceRunnerSha256!, /^[a-f0-9]{64}$/);
+      assert.equal(result.practiceRuntime.node, process.version);
       await assert.rejects(runPractice({ out: join(dir, 'run'), bots: [fast, slow], seconds: 10 }), /EEXIST/);
     } finally {
       await rm(dir, { recursive: true, force: true });
