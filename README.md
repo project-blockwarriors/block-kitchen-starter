@@ -32,6 +32,20 @@ The replay starts with the run outcome and a next step. Chef errors, failed mode
 
 `practice-runs/` is ignored by Git and excluded from the downloadable starter. Compare score **and** missed orders, burns and errors. Local timings do not establish hosted worker capacity, and this no-model run does not measure Jev quality. The replay identifies the tested code for each chef. Run details include full commit and local archive hashes when available. Working files and loose entrypoints are labeled separately.
 
+## What you submit
+
+Submit a GitHub repository at a specific commit or tag. The server runs two isolated copies of that version, one per chef. Each copy has its own memory and model requests. Use `observation.self.seat` to assign different roles, or let each chef choose from the shared kitchen state.
+
+| File | What you can change |
+| --- | --- |
+| `agent/policy.ts` | Tasks, priorities, ingredient choices and cooperation |
+| `agent/harness.ts` | Memory, prompts, Jev/Claude requests and fallback decisions |
+| `bot.ts` | The whole agent, including a different architecture |
+| `dreamweaver.json` | Your agent's name, runtime and entrypoint |
+| Your own files | Prompts, strategy tables, bundled code and other data |
+
+Keep the prepare/ready exchange and JSON-lines contract. Runtime dependencies are not installed on the worker. Bundle or vendor code before committing. The server supplies observations and applies its own rules; changing `game.ts` only changes your local simulator.
+
 ## Test the code you will submit
 
 Use Git and `tar` for committed practice. If you downloaded the ZIP, first create a repository in the extracted starter folder with `git init`. Commit the manifest, agent, prompts, data and lockfile, then run:
@@ -43,7 +57,7 @@ npm run submission -- HEAD
 npm run practice -- --ref HEAD --out practice-runs/committed
 ```
 
-`--ref` exports the selected commit into two separate temporary folders. Both chefs run that snapshot, even if you have since edited your files. A tag resolves once for both chefs. The folders are removed after the processes exit. Push the tested commit when you are ready to share it with the organizer. The local Git archive hash identifies this export; it is not the GitHub import digest or proof of hosted compatibility.
+`--ref` exports the selected commit into two separate temporary folders. Both chefs run that snapshot, even if you have since edited your files. A tag resolves once for both chefs. The folders are removed after the processes exit. The local Git archive hash identifies this export; it is not the GitHub import digest or proof of hosted compatibility.
 
 To compare roles or versions, keep the seed and duration the same:
 
@@ -86,9 +100,33 @@ Commands persist until completed or replaced. The motor walks one cell per two t
 
 At ten ticks per second, chopping takes 1.5 seconds and cooking takes four. Ready soup burns six seconds later. Two tomatoes make tomato soup, two mushrooms make mushroom soup, one of each makes garden soup. Orders expire after 45 seconds (initial orders are staggered at 45/55/65 seconds). A delivery gives 60 points, up to 20 deadline points and up to 30 streak points. Expiry costs 10; expiry or burning resets the streak. The match lasts up to three minutes.
 
-## Submission status
+## Push and import your version
 
-Commit the whole agent, manifest and lockfile; `npm run submission -- HEAD` checks that snapshot. The kitchen is an organizer-run prototype, **not selectable for official Dream Relay qualifiers**. Do not change an existing Relay entry to this protocol. Organizer-owned submitted agents have run through the Kitchen sandbox. Public Kitchen practice admission and persistent scheduling are not available yet.
+After reviewing the committed replay, push that same version. For example:
+
+```sh
+git tag practice-v1
+git push origin HEAD practice-v1
+npm run submission -- practice-v1
+```
+
+1. Sign in with GitHub at [BlockWarriors](https://mcpanel.blockwarriors.ai/dreamweaver/).
+2. In **My team**, link the repository. For a private repository, grant the BlockWarriors GitHub App access to that repository.
+3. Import `practice-v1` or the full commit SHA printed by the submission check. Confirm the imported SHA matches the one in your local replay.
+4. When hosted practice is open, choose that version in **Block Kitchen**, select the same seed and duration, and choose **Run practice**. Your laptop may disconnect after the request is queued.
+5. Open the private replay to inspect the outcome, submitted commit, chef actions and model errors. Commit and import a new version for your next attempt.
+
+Kitchen remains a closed preview. Public hosted practice is not open, and Kitchen runs do not count toward Dream Relay qualifiers. You can use local practice while the organizer tests hosted execution. Never put provider keys in the submission. The hosted worker handles model calls; local practice disables them.
+
+A tag identifies a commit when you import it. Pushing more commits or moving a tag does not update an imported version. Import the new commit explicitly. A local archive hash and a GitHub import digest can differ even for the same commit because the archive formats differ.
+
+## Check a push on GitHub
+
+The included **Check kitchen agent** workflow tests the tools, checks the committed submission, and runs both chefs for ten seconds with models disabled. Open the workflow run's **kitchen-practice** artifact and extract it, then open `replay.html`. The artifact also contains the summary and recorded states, and stays available for seven days.
+
+This short run checks startup and protocol behavior. Use a full local shift to compare strategies. A failed practice step fails the check and keeps any recording it produced. If packaging or setup failed first, there may be no recording; read that step's error.
+
+## Organizer tools
 
 From the infrastructure repository, run the built-in policies with:
 

@@ -114,7 +114,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     );
     console.log('Import this exact SHA: ' + r.sha);
     console.log(
-      'Next: run local practice and inspect the replay. Kitchen is an organizer-run preview; official qualifier import is not open. This check does not run the bot or certify sandbox compatibility.',
+      'Next: practice this SHA locally, push it, then import it in My team. Choose Block Kitchen when hosted practice is open. Kitchen is a closed preview. This check does not run the bot or verify hosted compatibility.',
     );
   } catch (e) {
     console.error(e.message);
