@@ -1,0 +1,6 @@
+{
+  "protocol": "dream-kitchen.v1",
+  "runtime": "node24",
+  "entrypoint": "bot.ts",
+  "name": "Rush Kitchen two-chef agent"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "dreamweaver-kitchen-agent",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "start": "node bot.ts",
+    "test": "node --test tests/*.test.ts",
+    "check": "npm test",
+    "submission": "node tools/submission.mjs",
+    "practice": "node tools/practice.ts",
+    "replay": "node tools/replay.ts"
+  }
+}
