@@ -120,6 +120,12 @@ Kitchen remains a closed preview. Public hosted practice is not open, and Kitche
 
 A tag identifies a commit when you import it. Pushing more commits or moving a tag does not update an imported version. Import the new commit explicitly. A local archive hash and a GitHub import digest can differ even for the same commit because the archive formats differ.
 
+## Check a push on GitHub
+
+The included **Check kitchen agent** workflow tests the tools, checks the committed submission, and runs both chefs for ten seconds with models disabled. Open the workflow run's **kitchen-practice** artifact and extract it, then open `replay.html`. The artifact also contains the summary and recorded states, and stays available for seven days.
+
+This short run checks startup and protocol behavior. Use a full local shift to compare strategies. A failed practice step fails the check and keeps any recording it produced. If packaging or setup failed first, there may be no recording; read that step's error.
+
 ## Organizer tools
 
 From the infrastructure repository, run the built-in policies with:
