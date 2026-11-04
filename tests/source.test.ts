@@ -144,6 +144,7 @@ test('different refs retain separate identities; protocol and interpreter mismat
     assert.notEqual(sources[0].identity.sha, sources[1].identity.sha);
     assert.notEqual(sources[0].identity.archiveSha256, sources[1].identity.archiveSha256);
     await assert.rejects(prepareSource({ root, ref: first, bot: 'agent/bot.mjs' }), /not both/);
+    await assert.rejects(prepareSource({ root, ref: '' }), /tag or commit SHA/);
     const manifest = JSON.parse(await readFile(join(root, 'dreamweaver.json'), 'utf8'));
     await writeFile(
       join(root, 'dreamweaver.json'),

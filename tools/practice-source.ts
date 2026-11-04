@@ -13,7 +13,8 @@ export async function prepareSource({
   bot,
   python = process.env.KITCHEN_PYTHON ?? 'python3.12',
 }: SourceInput = {}) {
-  if (ref && bot) throw Error('Use --ref for a committed submission or --bot for a loose file, not both.');
+  if (ref !== undefined && bot !== undefined)
+    throw Error('Use --ref for a committed submission or --bot for a loose file, not both.');
   let temporary: string | undefined;
   const dispose = async () => {
     if (temporary) await rm(temporary, { recursive: true, force: true });
@@ -21,7 +22,7 @@ export async function prepareSource({
   try {
     root = await realpath(root);
     let receipt: SubmissionReceipt | undefined;
-    if (ref) {
+    if (ref !== undefined) {
       const loaded = loadSubmission(ref, root);
       receipt = loaded.receipt;
       temporary = await mkdtemp(join(tmpdir(), 'block-kitchen-source-'));
